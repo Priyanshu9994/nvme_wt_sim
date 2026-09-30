@@ -17,3 +17,4 @@ nvme_wt_sim
 
 # Generated benchmark outputs
 results/*.log
+tests/test_workload
