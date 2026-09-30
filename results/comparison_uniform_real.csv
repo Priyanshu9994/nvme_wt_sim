@@ -1,0 +1,15 @@
+metric,baseline,optimized
+logical_requests,20000,20000
+physical_ops,20000,19990
+coalescing_ratio_pct,0,0.05
+avg_latency_us,2787.48,2705.8
+p50_latency_us,2571.21,2782.32
+p95_latency_us,4411.03,4221.38
+p99_latency_us,5059.87,4787.31
+max_latency_us,7180.16,6313.14
+physical_throughput_MBps,88.6231,91.3952
+app_throughput_MBps,88.6231,91.441
+app_iops,22687.5,23408.9
+physical_iops,22687.5,23397.2
+wall_seconds,0.881543,0.854376
+avg_queue_utilization_pct,10.1171,78.6232

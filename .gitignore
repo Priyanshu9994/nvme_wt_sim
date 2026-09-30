@@ -1,0 +1,19 @@
+# Build artifacts
+*.o
+nvme_wt_sim
+
+# Temporary files
+*.tmp
+*.log
+*.swp
+*~
+
+# Editor / IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+
+# Generated benchmark outputs
+results/*.log
