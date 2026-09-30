@@ -1,22 +1,37 @@
-CXX      := g++
-CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -Iinclude -pthread
-SRC      := $(wildcard src/*.cpp)
-OBJ      := $(SRC:.cpp=.o)
-BIN      := nvme_wt_sim
+CXX = g++
+CXXFLAGS = -std=c++17 -O2 -Wall -Wextra -Iinclude -pthread
 
-.PHONY: all clean run
+TARGET = nvme_wt_sim
 
-all: $(BIN)
+SOURCES = \
+	src/main.cpp \
+	src/metrics.cpp \
+	src/nvme_device.cpp \
+	src/workload.cpp \
+	src/write_through_cache.cpp
 
-$(BIN): $(OBJ)
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJ)
+OBJECTS = $(SOURCES:.cpp=.o)
+
+TEST_TARGET = tests/test_workload
+
+.PHONY: all clean run test
+
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(OBJECTS) -o $(TARGET)
 
 src/%.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-run: $(BIN)
-	mkdir -p results
-	./$(BIN)
+$(TEST_TARGET): tests/test_workload.cpp src/workload.cpp
+	$(CXX) $(CXXFLAGS) tests/test_workload.cpp src/workload.cpp -o $(TEST_TARGET)
+
+run: $(TARGET)
+	./$(TARGET)
+
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
 
 clean:
-	rm -f src/*.o $(BIN)
+	rm -f $(OBJECTS) $(TARGET) $(TEST_TARGET)
