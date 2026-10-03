@@ -19,3 +19,4 @@ nvme_wt_sim
 results/*.log
 tests/test_workload
 tests/test_nvme_device
+tests/test_write_through_cache
