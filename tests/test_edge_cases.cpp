@@ -135,7 +135,7 @@ void test_repeated_cache_start() {
     assert(device.total_physical_ops() == 1);
     assert(device.total_bytes_written() == BLOCK_SIZE);
 
-    std::cout << "[PASS] Repeated cache start handling\\n";
+    std::cout << "[PASS] Repeated cache start handling\n";
 }
 
 void test_immediate_optimized_flush() {
