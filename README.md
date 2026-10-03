@@ -1,156 +1,240 @@
-# Write-Through Caching NVMe Accelerator Simulator
+# NVMe Write-Through Caching Accelerator Simulator
 
-A C++17 / Linux simulator that implements a conventional (naive) write-through
-cache and an optimized write-through cache over the same modeled NVMe device,
-and measures the difference in latency, throughput, IOPS, queue utilization,
-and physical storage operations.
+A Linux-based C++17 system programming project that models and evaluates
+write-through caching strategies for NVMe-style storage.
 
-## 1. Problem being addressed
+The project compares a baseline synchronous write-through path with an
+optimized path using write coalescing, batching and multiple NVMe queue pairs.
 
-Write-through caching gives strong durability (every write is propagated to
-storage before it is acknowledged) at the cost of latency, because the
-application waits on storage for every write. Modern NVMe SSDs expose many
-parallel submission/completion queues, but a naive software write path that
-submits one command at a time on one queue and blocks for its completion
-never uses that parallelism. This project builds both implementations side
-by side, over the same device model, and quantifies the gap.
+# Project Overview
 
-## 2. How the two caches differ
+The project includes a small Linux kernel character-device module that demonstrates user-space/kernel-space communication.
 
-| | Baseline (`BaselineWriteThroughCache`) | Optimized (`OptimizedWriteThroughCache`) |
-|---|---|---|
-| Queue usage | Always queue 0, queue depth 1 | Round-robin across all queue pairs |
-| Submission | One `pwrite()`-equivalent command per request, blocking | Background thread batches pending writes and dispatches the whole batch at once |
-| Duplicate writes | Every write is a separate physical op | Writes to the same block inside a flush window are coalesced into one physical op |
-| Durability | Ack after that command completes | Ack after the (possibly coalesced) command completes — still write-through, never acks before the data is on the device |
+## Objectives
+- Model a write-through caching layer for NVMe-style storage.
+- Compare synchronous and optimized write paths.
+- Demonstrate write coalescing.
+- Demonstrate batch processing.
+- Model multiple NVMe queue pairs.
+- Measure latency, throughput, IOPS, and queue utilization.
+- Demonstrate Linux system programming concepts.
+- Demonstrate C++ concurrency and resource management.
+- Provide a Linux kernel device-interface component.
+- Maintain a reproducible software-development workflow using Git.
 
-The correctness argument for coalescing: if block X is written twice before
-either reaches the device, only the newer value is ever meaningful — writing
-the older value first would just be overwritten before anyone could observe
-it. So folding both logical writes into a single physical write of the final
-value, and acknowledging both callers when that one write completes, gives
-the same durability guarantee (final value is on stable storage before
-being acknowledged) with fewer physical operations. This is standard
-last-writer-wins coalescing, not a weakening of write-through semantics.
+## Key Features
+### Workload Generation
+Supports reproducible logical write workloads with:
+- Uniform distribution
+- Zipfian distribution
+- Configurable address-space size
+- Configurable request count
+- Fixed random seed
 
-## 3. Where the four topics show up
+### Baseline Write-Through Cache
+The baseline implementation:
+- Updates the in-memory cache.
+- Submits one physical write.
+- Uses a single queue.
+- Waits synchronously for completion.
+It provides the reference implementation for performance comparison.
 
-**Linux.** The device model issues real `pwrite()` syscalls against a file
-opened with `O_DIRECT` (bypassing the page cache, so writes actually go
-through the block I/O path instead of being absorbed by DRAM), using
-`posix_memalign` for the DMA-alignment `O_DIRECT` requires. Concurrency is
-built on POSIX threads via `std::thread`, `std::mutex`, and
-`std::condition_variable` (the "doorbell" a real NVMe driver rings to tell
-the device new commands are pending is modeled directly with a
-`condition_variable::notify_one()`).
+### Optimized Write-Through Cache
+Supports:
+- Write coalescing
+- Batch processing
+- Background flushing
+- Multiple NVMe queue pairs
+- Concurrent request processing
+- Completion signaling using C++ futures/promises
 
-**C++.** RAII (`AlignedBuffer` frees its aligned buffer in its destructor,
-the device closes and unlinks its backing file in its own destructor), STL
-containers (`std::unordered_map` for both the in-memory cache and the
-pending-coalescing table, `std::deque` for the submission queue), smart
-pointers (`std::shared_ptr<AlignedBuffer>`), `std::atomic` counters for
-lock-free statistics, `std::future`/`std::promise` to signal write
-completion back to the calling thread, move semantics, and separated
-headers/implementation across a small multi-file project built with a
-Makefile.
+### NVMe Device Model
+Models:
+| Feature | Description |
+| --- | --- |
+| Submission queues | NVMe-style submission queues |
+| Queue workers | Workers handling queues |
+| Multiple queue pairs | Supports multiple pairs |
+| Queue depth | Depth of each queue |
+| Device service latency | Latency modeling |
+| Physical operation counts | Counts of operations |
+| Bytes written | Data volume |
+| Queue utilization | Utilization metrics |
+The implementation uses Linux file operations and aligned buffers to model storage path.
 
-**Computer architecture.** The `NVMeQueuePair` objects model an SSD's
-internal channel parallelism — multiple independent servers rather than one.
-Queue depth and outstanding-command counts are tracked directly
-(`max_depth_seen`). The measured relationship between concurrency, latency,
-and throughput is Little's Law in practice: pushing more requests
-concurrently through the optimized path raises per-request latency somewhat
-(more queueing) while raising aggregate throughput a lot — the classic
-batching latency/throughput trade-off, visible directly in the numbers this
-simulator prints. Write-through vs. write-back is a cache-consistency model
-choice, and the coalescing design is explicitly justified as memory/storage
-consistency reasoning, not just an engineering trick.
+## Performance Metrics 
+Measures include:
+average latency, p50/p95/p99 latency, maximum latency, physical throughput, application throughput, IOPS (physical and application), storage operations, coalescing reduction, queue utilization (average and per queue).
+details are stored in `results/comparison.csv`.
+Current benchmark findings indicate that for the recorded Zipfian workload, the optimized implementation reduced physical storage operations by approximately **14.31%**. However, it did not produce lower latency or higher throughput than the baseline. This is considered an engineering trade-off rather than a universal speedup. 
+detailed results are available in:
+docs/baseline-performance.md and docs/performance-analysis.md.
 
-**Hardware and software.** An NVMe queue pair *is* a submission ring the
-driver pushes commands into and a completion ring the device pushes
-results into; that's exactly what `NVMeQueuePair` implements, with a
-dedicated worker thread standing in for the device-side execution unit for
-each channel. The project also makes the real-hardware caveat explicit: see
-Section 5.
+# Linux Kernel Device Interface 
+The project contains a small Linux kernel character-device module:
+driver/
+b├── Makefile  
+b├── README.md  
+b└── nvme_wt_driver.c  
+named `/dev/nvme_wt_sim` which demonstrates:
+lkernel module development,
+e.g., character-device registration,
+copied to/from user space functions (`copy_to_user()`, `copy_from_user()`), synchronization,
+and user-space/kernel-space communication. The module has been tested through various stages including load/unload and read/write operations. It is important to note that this kernel module is purely demonstrative; it is not a production NVMe controller driver nor a complete protocol implementation. The main NVMe logic remains in the userspace simulator.
 
-## 4. Build and run
+default structure of project files includes directories like `nvme_wt_sim/`, `include/`, `src/`, `tests/`, `driver/`, `docs/`, etc., each containing relevant source code, tests, documentation, diagrams, scripts, results, build files (`Makefile`), README files, and `.gitignore` for version control management.
+'the environment requirements include Linux (preferably Ubuntu via WSL2 on Windows), C++17 compiler, GNU Make, Git, POSIX environment. Build commands include `make clean && make` from root to compile the simulator; run with `make run`. Tests can be executed via `make test`. Kernel module can be built with `make -C driver` and loaded/unloaded using standard insmod/rmmod commands with validation steps outlined above.'} } }}}}
+# Important
 
+The kernel module is a demonstration character-device interface.
+
+It is not:
+
+- A production NVMe controller driver
+- A replacement for the Linux NVMe subsystem
+- A complete NVMe protocol implementation
+- A production block-storage driver
+
+The main NVMe implementation remains a userspace simulator.
+
+## Project Structure
 ```
-make            # builds ./nvme_wt_sim
-./nvme_wt_sim --help
+nvme_wt_sim/
+├── include/
+│   ├── metrics.hpp
+│   ├── nvme_device.hpp
+│   ├── workload.hpp
+│   └── write_through_cache.hpp
+├── src/
+│   ├── main.cpp
+│   ├── metrics.cpp
+│   ├── nvme_device.cpp
+│   ├── workload.cpp
+│   └── write_through_cache.cpp
+├── tests/
+│   ├── test_workload.cpp
+│   ├── test_nvme_device.cpp
+│   ├── test_write_through_cache.cpp
+│   └── test_edge_cases.cpp
+├── driver/
+│   ├── Makefile
+docs/
+├── diagrams/
+├── scripts/
+├── results/
+├── Makefile
+├── README.md
+└── .gitignore``` 
+ 
+## Requirements 
+* Linux environment 
+* C++17 compiler 
+* GNU Make 
+* Git 
+* POSIX development environment 
+ 
+The primary development environment is:
+> Windows → WSL2 → Ubuntu Linux  
+Kernel-module development uses a custom Microsoft WSL2 kernel with the required kernel build interface.
+ 
+## Build the Simulator 
+From the project root:
+```bash
+targets: make clean, make, make run```
+Run the Simulator:
+default command:
+make run  
+the benchmark comparison is written to:
+docs/compare.csv  
+test suite: make test  
+the suite includes: workload tests, NVMe device tests, write-through cache tests, edge-case tests.
+ 
+build the Kernel Module: from project root:
+makes -C driver  
+the generated module is: driver/nvme_wt_driver.ko  
+the kernel-module build artifacts are intentionally excluded from Git.
+Test the Kernel Module:
+sudo insmod driver/nvme_wt_driver.ko  check: ls -l /dev/nvme_wt_sim  write: printf "NVMe write-through driver test" | sudo tee /dev/nvme_wt_sim > /dev/null  read: cat /dev/nvme_wt_sim  expected output: NVMe write-through driver test  unload: sudo rmmod nvme_wt_driver  The device node should then disappear.
+detailed validation is documented in docs/driver-validation.md.
+ 
+## Testing and Validation 
+the project uses multiple levels of validation including unit testing, integration testing, edge-case testing, system testing, performance testing, and kernel module validation. All automated test suites passed during recorded validation runs.
+ 
+documentation: detailed project documentation is available in docs/. important documents include project-overview.md (project scope and objectives), requirements.md (functional and non-functional requirements), development-plan.md (implementation and development plan), architecture.md (system architecture), design.md (detailed class and execution design), testing.md (testing strategy), test-results.md (test evidence), baseline-performance.md (benchmark configuration and baseline), performance-analysis.md (performance interpretation), driver-validation.md (kernel module validation), final-validation.md (final project validation).
+ 
+building workflow follows these steps:
+git commits document progression of implementation and validation work.
+e.g., requirements → architecture → implementation → testing → performance analysis → improvement → final validation.
+'the current limitations include that the NVMe implementation is a userspace simulator; it does not implement full protocol; storage is file-backed; device latency can be simulated; benchmark results depend on host environment; kernel module is demonstration only.
+future work includes more realistic command modeling, additional workloads, adaptive scheduling, advanced merging, profiling, regression benchmarking, hardware validation, Linux integration.
+demonstrates concepts from Linux system programming, computer architecture, hardware/software interaction,
+multithreading,
+synchronization,
+storage systems,
+pPerformance analysis,
+sftware testing,
+and version control.
+host author info: Priyanshu Aman — B.Tech in Computer Science and Engineering.
+# Documentation
+
+Detailed project documentation is available in `docs/`.
+
+## Important Documents
+- `project-overview.md` — project scope and objectives
+- `requirements.md` — functional and non-functional requirements
+- `development-plan.md` — implementation and development plan
+- `architecture.md` — system architecture
+- `design.md` — detailed class and execution design
+- `testing.md` — testing strategy
+- `test-results.md` — test evidence
+- `baseline-performance.md` — benchmark configuration and baseline
+- `performance-analysis.md` — performance interpretation
+- `driver-validation.md` — kernel module validation
+- `final-validation.md` — final project validation
+
+## Development Workflow
+The project follows a professional development workflow:
 ```
-
-Example run (skewed/Zipfian workload, modeled 60us channel latency, 8 queues,
-64 concurrent application threads):
-
+Requirements → Architecture → Implementation → Testing → Performance Analysis → Improvement → Final Validation
 ```
-./nvme_wt_sim --requests 20000 --address-space 50000 --queues 8 \
-  --distribution zipf --zipf-skew 1.2 --app-threads 64 \
-  --flush-interval-us 40 --batch-trigger 32 --sim-latency-us 60
-```
+Git commits document the progression of the implementation and validation work.
 
-This prints a full report for each cache and a comparison table, and writes
-`results/comparison.csv`. To turn that into charts:
+## Limitations
+The current project has several limitations:
+- The NVMe implementation is a userspace simulator.
+- It does not implement the complete NVMe protocol.
+- Storage is file-backed.
+- Device latency can be simulated.
+- Benchmark results depend on the host environment.
+- The kernel module is a demonstration character device rather than a production NVMe block driver.
 
-```
-python3 scripts/plot_results.py results/comparison.csv results/chart.png
-```
+## Future Work
+Potential extensions include:
+- More realistic NVMe command modeling
+- Additional workload distributions
+ - Adaptive queue scheduling
+ - Advanced write merging
+ - More extensive profiling
+ - Automated regression benchmarking
+ - Hardware-based NVMe validation
+ - Expanded Linux device-driver integration
 
-Key flags:
-- `--distribution uniform|zipf` and `--zipf-skew` control address skew —
-  coalescing only helps when addresses repeat, so Zipfian (hot-block) traffic
-  is where its benefit shows up; uniform traffic isolates the multi-queue
-  parallelism benefit instead.
-- `--app-threads` sets how many concurrent "application" threads submit
-  writes — both caches are always run under the *same* concurrency, because
-  comparing a single-threaded baseline against a multi-threaded optimized
-  run would be an unfair comparison.
-- `--sim-latency-us` (default 60) uses an analytical per-op channel-latency
-  model instead of this host's raw `pwrite()` timing; see Section 5 for why.
-  Pass `0` to use real O_DIRECT timing end to end.
+## Academic / Training Context
+This project demonstrates concepts from:
+| Topic | Description |
+|---------|--------------|
+| Linux | Operating system fundamentals |
+| C++ | Programming language |
+| System Programming | Low-level programming |
+| Computer Architecture | Hardware design principles |
+| Hardware and Software Interaction | Integration concepts |
+| Multithreading | Concurrent execution |
+| Synchronization | Coordination mechanisms |
+| Storage Systems | Data storage solutions |
+| Performance Analysis | System evaluation techniques |
+| Software Testing | Quality assurance processes |
+| Version Control | Code management tools |
 
-## 5. An honest note on real vs. modeled device timing
-
-Everything in this project performs real `pwrite()` calls to a real file
-opened `O_DIRECT`; that part is not simulated. What *is* optionally modeled
-is the per-operation service time used for the latency/throughput numbers.
-
-On the sandbox this was developed in (a single-vCPU VM over a shared/
-virtualized disk), real, unmodified `O_DIRECT` timing shows only a marginal
-multi-queue benefit on a uniform-address workload —
-`results/run_uniform_real_odirect.log` (`--sim-latency-us 0`) measures
-roughly **1.03x** on latency/IOPS, essentially parity, because the host's
-storage stack and single vCPU don't give the eight "queues" genuine
-independent hardware channels to exploit at any real scale; almost all of
-the improvement that *does* show up in real timing comes from coalescing,
-and only when the workload has address skew
-(`results/run_zipf_real_odirect.log`).
-
-Rather than hide that, `--sim-latency-us` (on by default, 60us base ±15%
-jitter per queue) replaces the *measured* per-op time with an *analytical*
-one representative of real multi-channel NVMe hardware, while still issuing
-the real syscall for correctness. This is the standard reason architecture
-simulators use service-time models instead of raw measurements from an
-unrepresentative host: it isolates the software architecture under test
-(queueing, batching, coalescing) from a specific machine's incidental
-limitations. Both modes are in `results/` as evidence:
-
-- `run_zipf_modeled.log` / `chart_zipf_modeled.png` — modeled latency,
-  skewed workload: coalescing + parallelism combined (~5x latency and IOPS
-  improvement).
-- `run_uniform_modeled.log` / `chart_uniform_modeled.png` — modeled latency,
-  uniform workload: parallelism benefit in isolation (~2.7x improvement,
-  negligible coalescing as expected).
-- `run_zipf_real_odirect.log` — unmodified real O_DIRECT timing, skewed
-  workload, on this host: still shows the coalescing win (fewer physical
-  ops, higher latency/IOPS from that alone) even without a parallelism win.
-
-## 6. Project layout
-
-```
-include/    nvme_device.hpp, metrics.hpp, workload.hpp, write_through_cache.hpp
-src/        matching .cpp files + main.cpp (the driver/CLI)
-scripts/    plot_results.py (optional chart generation from the CSV output)
-results/    saved run logs, CSVs, and charts from three representative runs
-Makefile
-```
+## Author 
+**Priyanshu Aman**
+B.Tech — Computer Science and Engineering
