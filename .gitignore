@@ -21,3 +21,14 @@ tests/test_workload
 tests/test_nvme_device
 tests/test_write_through_cache
 tests/test_edge_cases
+
+# Linux kernel module build artifacts
+driver/*.o
+driver/*.ko
+driver/*.mod
+driver/*.mod.c
+driver/*.mod.o
+driver/Module.symvers
+driver/modules.order
+driver/.tmp_versions/
+driver/.*.cmd
