@@ -15,7 +15,8 @@ OBJECTS = $(SOURCES:.cpp=.o)
 TEST_TARGETS = \
 	tests/test_workload \
 	tests/test_nvme_device \
-	tests/test_write_through_cache
+	tests/test_write_through_cache \
+	tests/test_edge_cases
 
 .PHONY: all clean run test
 
@@ -44,6 +45,19 @@ tests/test_write_through_cache: tests/test_write_through_cache.cpp \
 		src/metrics.cpp \
 		-o tests/test_write_through_cache
 
+tests/test_edge_cases: tests/test_edge_cases.cpp \
+	src/workload.cpp \
+	src/nvme_device.cpp \
+	src/write_through_cache.cpp \
+	src/metrics.cpp
+	$(CXX) $(CXXFLAGS) \
+		tests/test_edge_cases.cpp \
+		src/workload.cpp \
+		src/nvme_device.cpp \
+		src/write_through_cache.cpp \
+		src/metrics.cpp \
+		-o tests/test_edge_cases
+
 run: $(TARGET)
 	./$(TARGET)
 
@@ -51,6 +65,7 @@ test: $(TEST_TARGETS)
 	./tests/test_workload
 	./tests/test_nvme_device
 	./tests/test_write_through_cache
+	./tests/test_edge_cases
 
 clean:
 	rm -f $(OBJECTS) $(TARGET) $(TEST_TARGETS)

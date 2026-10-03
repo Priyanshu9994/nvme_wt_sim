@@ -20,3 +20,4 @@ results/*.log
 tests/test_workload
 tests/test_nvme_device
 tests/test_write_through_cache
+tests/test_edge_cases
