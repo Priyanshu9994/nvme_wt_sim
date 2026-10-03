@@ -104,6 +104,40 @@ void test_single_queue_device() {
     std::cout << "[PASS] Single-queue device boundary\n";
 }
 
+void test_repeated_cache_start() {
+    cleanup();
+
+    NVMeDevice device(
+        TEST_FILE,
+        8,
+        BLOCK_SIZE,
+        2,
+        0
+    );
+
+    MetricsCollector metrics;
+
+    OptimizedWriteThroughCache cache(
+        device,
+        metrics,
+        std::chrono::milliseconds(20),
+        8
+    );
+
+    cache.start();
+    cache.start();
+
+    std::vector<char> value(BLOCK_SIZE, 'R');
+    cache.write(3, value);
+
+    cache.stop();
+
+    assert(device.total_physical_ops() == 1);
+    assert(device.total_bytes_written() == BLOCK_SIZE);
+
+    std::cout << "[PASS] Repeated cache start handling\\n";
+}
+
 void test_immediate_optimized_flush() {
     cleanup();
 
@@ -146,6 +180,7 @@ int main() {
     test_aligned_buffer();
     test_single_queue_device();
     test_immediate_optimized_flush();
+    test_repeated_cache_start();
 
     cleanup();
 

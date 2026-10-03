@@ -43,8 +43,16 @@ OptimizedWriteThroughCache::OptimizedWriteThroughCache(NVMeDevice& device, Metri
 OptimizedWriteThroughCache::~OptimizedWriteThroughCache() { stop(); }
 
 void OptimizedWriteThroughCache::start() {
-    running_ = true;
-    flusher_ = std::thread(&OptimizedWriteThroughCache::flush_loop, this);
+    if (running_.exchange(true)) {
+        return;
+    }
+
+    try {
+        flusher_ = std::thread(&OptimizedWriteThroughCache::flush_loop, this);
+    } catch (...) {
+        running_ = false;
+        throw;
+    }
 }
 
 void OptimizedWriteThroughCache::stop() {
