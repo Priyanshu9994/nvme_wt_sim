@@ -1,241 +1,376 @@
-# NVMe Write-Through Caching Accelerator Simulator
+NVME WRITE-THROUGH CACHING ACCELERATOR SIMULATOR
 
-A Linux-based C++17 system programming project that models and evaluates
-write-through caching strategies for NVMe-style storage.
+A Linux-based C++17 system programming project that models and evaluates write-through caching strategies for NVMe-style storage.
 
-The project compares a baseline synchronous write-through path with an
-optimized path using write coalescing, batching and multiple NVMe queue pairs.
+The project compares a baseline synchronous write-through path with an optimized path using write coalescing, batching, and
+multiple NVMe queue pairs.
 
-# Project Overview
+
+PROJECT OVERVIEW
 
 The project includes a small Linux kernel character-device module that demonstrates user-space/kernel-space communication.
 
-## Objectives
-- Model a write-through caching layer for NVMe-style storage.
-- Compare synchronous and optimized write paths.
-- Demonstrate write coalescing.
-- Demonstrate batch processing.
-- Model multiple NVMe queue pairs.
-- Measure latency, throughput, IOPS, and queue utilization.
-- Demonstrate Linux system programming concepts.
-- Demonstrate C++ concurrency and resource management.
-- Provide a Linux kernel device-interface component.
-- Maintain a reproducible software-development workflow using Git.
 
-## Key Features
-### Workload Generation
+OBJECTIVES
+
+ * Model a write-through caching layer for NVMe-style storage.
+ * Compare synchronous and optimized write paths.
+ * Demonstrate write coalescing.
+ * Demonstrate batch processing.
+ * Model multiple NVMe queue pairs.
+ * Measure latency, throughput, IOPS, and queue utilization.
+ * Demonstrate Linux system programming concepts.
+ * Demonstrate C++ concurrency and resource management.
+ * Provide a Linux kernel device-interface component.
+ * Maintain a reproducible software-development workflow using Git.
+
+
+KEY FEATURES
+
+
+WORKLOAD GENERATION
+
 Supports reproducible logical write workloads with:
-- Uniform distribution
-- Zipfian distribution
-- Configurable address-space size
-- Configurable request count
-- Fixed random seed
 
-### Baseline Write-Through Cache
+ * Uniform distribution
+ * Zipfian distribution
+ * Configurable address-space size
+ * Configurable request count
+ * Fixed random seed
+
+
+BASELINE WRITE-THROUGH CACHE
+
 The baseline implementation:
-- Updates the in-memory cache.
-- Submits one physical write.
-- Uses a single queue.
-- Waits synchronously for completion.
+
+ * Updates the in-memory cache.
+ * Submits one physical write.
+ * Uses a single queue.
+ * Waits synchronously for completion.
+
 It provides the reference implementation for performance comparison.
 
-### Optimized Write-Through Cache
+
+OPTIMIZED WRITE-THROUGH CACHE
+
 Supports:
-- Write coalescing
-- Batch processing
-- Background flushing
-- Multiple NVMe queue pairs
-- Concurrent request processing
-- Completion signaling using C++ futures/promises
 
-### NVMe Device Model
-Models:
-| Feature | Description |
-| --- | --- |
-| Submission queues | NVMe-style submission queues |
-| Queue workers | Workers handling queues |
-| Multiple queue pairs | Supports multiple pairs |
-| Queue depth | Depth of each queue |
-| Device service latency | Latency modeling |
-| Physical operation counts | Counts of operations |
-| Bytes written | Data volume |
-| Queue utilization | Utilization metrics |
-The implementation uses Linux file operations and aligned buffers to model storage path.
+ * Write coalescing
+ * Batch processing
+ * Background flushing
+ * Multiple NVMe queue pairs
+ * Concurrent request processing
+ * Completion signaling using C++ futures/promises
 
-## Performance Metrics 
-Measures include:
-average latency, p50/p95/p99 latency, maximum latency, physical throughput, application throughput, IOPS (physical and application), storage operations, coalescing reduction, queue utilization (average and per queue).
-details are stored in `results/comparison.csv`.
-Current benchmark findings indicate that for the recorded Zipfian workload, the optimized implementation reduced physical storage operations by approximately **14.31%**. However, it did not produce lower latency or higher throughput than the baseline. This is considered an engineering trade-off rather than a universal speedup. 
-detailed results are available in:
-docs/baseline-performance.md and docs/performance-analysis.md.
 
-# Linux Kernel Device Interface 
-The project contains a small Linux kernel character-device module:
-driver/
-b├── Makefile  
-b├── README.md  
-b└── nvme_wt_driver.c  
-named `/dev/nvme_wt_sim` which demonstrates:
-lkernel module development,
-e.g., character-device registration,
-copied to/from user space functions (`copy_to_user()`, `copy_from_user()`), synchronization,
-and user-space/kernel-space communication. The module has been tested through various stages including load/unload and read/write operations. It is important to note that this kernel module is purely demonstrative; it is not a production NVMe controller driver nor a complete protocol implementation. The main NVMe logic remains in the userspace simulator.
+NVME DEVICE MODEL
 
-default structure of project files includes directories like `nvme_wt_sim/`, `include/`, `src/`, `tests/`, `driver/`, `docs/`, etc., each containing relevant source code, tests, documentation, diagrams, scripts, results, build files (`Makefile`), README files, and `.gitignore` for version control management.
-'the environment requirements include Linux (preferably Ubuntu via WSL2 on Windows), C++17 compiler, GNU Make, Git, POSIX environment. Build commands include `make clean && make` from root to compile the simulator; run with `make run`. Tests can be executed via `make test`. Kernel module can be built with `make -C driver` and loaded/unloaded using standard insmod/rmmod commands with validation steps outlined above.'} } }}}}
-# Important
+The simulator models:
 
-The kernel module is a demonstration character-device interface.
+Feature Description Submission queues NVMe-style submission queues Queue workers Workers handling queues Multiple queue pairs
+Supports multiple queue pairs Queue depth Depth of each queue Device service latency Latency modeling Physical operation counts
+Counts of physical operations Bytes written Data volume Queue utilization Queue utilization metrics
 
-It is not:
+The implementation uses Linux file operations and aligned buffers to model the storage path.
 
-- A production NVMe controller driver
-- A replacement for the Linux NVMe subsystem
-- A complete NVMe protocol implementation
-- A production block-storage driver
 
-The main NVMe implementation remains a userspace simulator.
+PERFORMANCE METRICS
 
-## Project Structure
-```
+The project measures:
+
+ * Average latency
+ * P50 latency
+ * P95 latency
+ * P99 latency
+ * Maximum latency
+ * Physical throughput
+ * Application throughput
+ * Physical IOPS
+ * Application IOPS
+ * Storage operation count
+ * Coalescing reduction
+ * Average queue utilization
+ * Per-queue utilization
+
+Detailed results are stored in:
+
+results/comparison.csv
+
+Current benchmark findings indicate that, for the recorded Zipfian workload, the optimized implementation reduced physical storage
+operations by approximately 14.31%.
+
+However, it did not produce lower latency or higher throughput than the baseline. This is considered an engineering trade-off
+rather than a universal speedup.
+
+Detailed results are available in:
+
+ * docs/baseline-performance.md
+ * docs/performance-analysis.md
+
+
+LINUX KERNEL DEVICE INTERFACE
+
+The project contains a small Linux kernel character-device module located in the driver/ directory.
+
+The module creates the device:
+
+/dev/nvme_wt_sim
+
+
+It demonstrates:
+
+ * Linux kernel module development
+ * Character-device registration
+ * User-space/kernel-space communication
+ * copy_to_user()
+ * copy_from_user()
+ * Synchronization
+ * Device read/write operations
+
+The module has been tested through stages including module loading, unloading, and read/write operations.
+
+> Important: The kernel module is purely demonstrative. It is not a production NVMe controller driver and does not implement the
+> complete NVMe protocol. The main NVMe logic remains in the user-space simulator.
+
+
+PROJECT STRUCTURE
+
 nvme_wt_sim/
 ├── include/
 │   ├── metrics.hpp
 │   ├── nvme_device.hpp
 │   ├── workload.hpp
 │   └── write_through_cache.hpp
+│
 ├── src/
 │   ├── main.cpp
 │   ├── metrics.cpp
 │   ├── nvme_device.cpp
 │   ├── workload.cpp
 │   └── write_through_cache.cpp
+│
 ├── tests/
 │   ├── test_workload.cpp
 │   ├── test_nvme_device.cpp
 │   ├── test_write_through_cache.cpp
 │   └── test_edge_cases.cpp
+│
 ├── driver/
 │   ├── Makefile
-docs/
-├── diagrams/
-├── scripts/
+│   ├── README.md
+│   └── nvme_wt_driver.c
+│
+├── docs/
+│   ├── diagrams/
+│   ├── scripts/
+│   └── ...
+│
 ├── results/
+│
 ├── Makefile
 ├── README.md
-└── .gitignore``` 
- 
-## Requirements 
-* Linux environment 
-* C++17 compiler 
-* GNU Make 
-* Git 
-* POSIX development environment 
- 
+└── .gitignore
+
+
+
+REQUIREMENTS
+
+The project requires:
+
+ * Linux environment
+ * C++17 compiler
+ * GNU Make
+ * Git
+ * POSIX development environment
+
+
+DEVELOPMENT ENVIRONMENT
+
 The primary development environment is:
-> Windows → WSL2 → Ubuntu Linux  
-Kernel-module development uses a custom Microsoft WSL2 kernel with the required kernel build interface.
- 
-## Build the Simulator 
+
+Windows
+   ↓
+WSL2
+   ↓
+Ubuntu Linux
+
+
+Kernel-module development uses a WSL2 kernel environment with the required kernel build interface.
+
+
+BUILD THE SIMULATOR
+
 From the project root:
-```bash
-targets: make clean, make, make run```
-Run the Simulator:
-default command:
-make run  
-the benchmark comparison is written to:
-docs/compare.csv  
-test suite: make test  
-the suite includes: workload tests, NVMe device tests, write-through cache tests, edge-case tests.
- 
-build the Kernel Module: from project root:
-makes -C driver  
-the generated module is: driver/nvme_wt_driver.ko  
-the kernel-module build artifacts are intentionally excluded from Git.
-Test the Kernel Module:
-sudo insmod driver/nvme_wt_driver.ko  check: ls -l /dev/nvme_wt_sim  write: printf "NVMe write-through driver test" | sudo tee /dev/nvme_wt_sim > /dev/null  read: cat /dev/nvme_wt_sim  expected output: NVMe write-through driver test  unload: sudo rmmod nvme_wt_driver  The device node should then disappear.
-detailed validation is documented in docs/driver-validation.md.
- 
-## Testing and Validation 
-the project uses multiple levels of validation including unit testing, integration testing, edge-case testing, system testing, performance testing, and kernel module validation. All automated test suites passed during recorded validation runs.
- 
-documentation: detailed project documentation is available in docs/. important documents include project-overview.md (project scope and objectives), requirements.md (functional and non-functional requirements), development-plan.md (implementation and development plan), architecture.md (system architecture), design.md (detailed class and execution design), testing.md (testing strategy), test-results.md (test evidence), baseline-performance.md (benchmark configuration and baseline), performance-analysis.md (performance interpretation), driver-validation.md (kernel module validation), final-validation.md (final project validation).
- 
-building workflow follows these steps:
-git commits document progression of implementation and validation work.
-e.g., requirements → architecture → implementation → testing → performance analysis → improvement → final validation.
-'the current limitations include that the NVMe implementation is a userspace simulator; it does not implement full protocol; storage is file-backed; device latency can be simulated; benchmark results depend on host environment; kernel module is demonstration only.
-future work includes more realistic command modeling, additional workloads, adaptive scheduling, advanced merging, profiling, regression benchmarking, hardware validation, Linux integration.
-demonstrates concepts from Linux system programming, computer architecture, hardware/software interaction,
-multithreading,
-synchronization,
-storage systems,
-pPerformance analysis,
-sftware testing,
-and version control.
-host author info: Priyanshu Aman — B.Tech in Computer Science and Engineering.
-# Documentation
 
-Detailed project documentation is available in `docs/`.
+make clean
+make
 
-## Important Documents
-- `project-overview.md` — project scope and objectives
-- `requirements.md` — functional and non-functional requirements
-- `development-plan.md` — implementation and development plan
-- `architecture.md` — system architecture
-- `design.md` — detailed class and execution design
-- `testing.md` — testing strategy
-- `test-results.md` — test evidence
-- `baseline-performance.md` — benchmark configuration and baseline
-- `performance-analysis.md` — performance interpretation
-- `driver-validation.md` — kernel module validation
-- `final-validation.md` — final project validation
 
-## Development Workflow
-The project follows a professional development workflow:
-```
-Requirements → Architecture → Implementation → Testing → Performance Analysis → Improvement → Final Validation
-```
+Run the simulator:
+
+make run
+
+
+Run the test suite:
+
+make test
+
+
+The test suite includes:
+
+ * Workload tests
+ * NVMe device tests
+ * Write-through cache tests
+ * Edge-case tests
+
+
+BUILD THE KERNEL MODULE
+
+From the project root:
+
+make -C driver
+
+
+The generated kernel module is:
+
+driver/nvme_wt_driver.ko
+
+
+Kernel-module build artifacts are intentionally excluded from Git.
+
+
+TEST THE KERNEL MODULE
+
+Load the module:
+
+sudo insmod driver/nvme_wt_driver.ko
+
+
+Check that the device exists:
+
+ls -l /dev/nvme_wt_sim
+
+
+Write data to the device:
+
+printf "NVMe write-through driver test" | sudo tee /dev/nvme_wt_sim > /dev/null
+
+
+Read the data:
+
+cat /dev/nvme_wt_sim
+
+
+Expected output:
+
+NVMe write-through driver test
+
+
+Unload the module:
+
+sudo rmmod nvme_wt_driver
+
+
+The /dev/nvme_wt_sim device node should then disappear.
+
+Detailed kernel-module validation is documented in:
+
+docs/driver-validation.md
+
+
+TESTING AND VALIDATION
+
+The project uses multiple levels of validation:
+
+ * Unit testing
+ * Integration testing
+ * Edge-case testing
+ * System testing
+ * Performance testing
+ * Kernel module validation
+
+Automated test suites are used to verify the major project components.
+
+Detailed testing documentation is available in:
+
+docs/testing.md
+
+Important project documents include:
+
+ * project-overview.md — project scope and objectives
+ * requirements.md — functional and non-functional requirements
+ * development-plan.md — implementation and development plan
+ * architecture.md — system architecture
+ * design.md — detailed class and execution design
+ * testing.md — testing strategy
+ * test-results.md — test evidence
+ * baseline-performance.md — benchmark configuration and baseline
+ * performance-analysis.md — performance interpretation
+ * driver-validation.md — kernel module validation
+ * final-validation.md — final project validation
+
+
+DEVELOPMENT WORKFLOW
+
+The project follows a structured software-development workflow:
+
+Requirements
+     ↓
+Architecture
+     ↓
+Implementation
+     ↓
+Testing
+     ↓
+Performance Analysis
+     ↓
+Improvement
+     ↓
+Final Validation
+
+
 Git commits document the progression of the implementation and validation work.
 
-## Limitations
+
+LIMITATIONS
+
 The current project has several limitations:
-- The NVMe implementation is a userspace simulator.
-- It does not implement the complete NVMe protocol.
-- Storage is file-backed.
-- Device latency can be simulated.
-- Benchmark results depend on the host environment.
-- The kernel module is a demonstration character device rather than a production NVMe block driver.
 
-## Future Work
-Potential extensions include:
-- More realistic NVMe command modeling
-- Additional workload distributions
- - Adaptive queue scheduling
- - Advanced write merging
- - More extensive profiling
- - Automated regression benchmarking
- - Hardware-based NVMe validation
- - Expanded Linux device-driver integration
+ * The NVMe implementation is a user-space simulator.
+ * It does not implement the complete NVMe protocol.
+ * Storage is file-backed.
+ * Device latency can be simulated.
+ * Benchmark results depend on the host environment.
+ * The kernel module is a demonstration character device rather than a production NVMe block driver.
 
-## Academic / Training Context
+
+FUTURE WORK
+
+Potential future extensions include:
+
+ * More realistic NVMe command modeling
+ * Additional workload distributions
+ * Adaptive queue scheduling
+ * Advanced write merging
+ * More extensive profiling
+ * Automated regression benchmarking
+ * Hardware-based NVMe validation
+ * Expanded Linux device-driver integration
+
+
+ACADEMIC / TRAINING CONTEXT
+
 This project demonstrates concepts from:
-| Topic | Description |
-|---------|--------------|
-| Linux | Operating system fundamentals |
-| C++ | Programming language |
-| System Programming | Low-level programming |
-| Computer Architecture | Hardware design principles |
-| Hardware and Software Interaction | Integration concepts |
-| Multithreading | Concurrent execution |
-| Synchronization | Coordination mechanisms |
-| Storage Systems | Data storage solutions |
-| Performance Analysis | System evaluation techniques |
-| Software Testing | Quality assurance processes |
-| Version Control | Code management tools |
 
-## Author 
-**Priyanshu Aman**
+Topic Description Linux Operating system fundamentals C++ Object-oriented and system programming System Programming Low-level
+programming and system interfaces Computer Architecture CPU, memory, storage, and I/O concepts Hardware and Software Interaction
+Interaction between software and system resources Multithreading Concurrent execution Synchronization Coordination between
+concurrent operations Storage Systems Data storage and I/O concepts Performance Analysis System performance evaluation Software
+Testing Quality assurance and validation Version Control Git-based software development
+
+
+AUTHOR
+
+Priyanshu Aman
+
 B.Tech — Computer Science and Engineering
-
